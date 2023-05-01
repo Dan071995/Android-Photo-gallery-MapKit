@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/mainBlankFragment">
+
+    <fragment
+        android:id="@+id/mainBlankFragment"
+        android:name="com.example.cameraroomrecyclerview.presentation.MainBlankFragment"
+        android:label="MainBlankFragment"
+        tools:layout="@layout/fragment_main_blank"
+        >
+        <action
+            android:id="@+id/action_mainBlankFragment_to_itemClickBlankFragment"
+            app:destination="@id/itemClickBlankFragment" />
+        <action
+            android:id="@+id/action_mainBlankFragment_to_attractionsMapFragment"
+            app:destination="@id/attractionsMapFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/itemClickBlankFragment"
+        android:name="com.example.cameraroomrecyclerview.presentation.ItemClickBlankFragment"
+        android:label="fragment_item_click_blank"
+        tools:layout="@layout/fragment_item_click_blank" />
+
+    <fragment
+        android:id="@+id/attractionsMapFragment"
+        android:name="com.example.cameraroomrecyclerview.presentation.AttractionsMapFragment"
+        android:label="fragment_attractions_map"
+        tools:layout="@layout/fragment_attractions_map" />
+
+</navigation>

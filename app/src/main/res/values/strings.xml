@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Camera_Room_RecView_Maps</string>
+    <string name="make_photo">Make Photo</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="attractions">Attractions</string>
+    <string name="distance_to_place">Distance to place:</string>
+</resources>
