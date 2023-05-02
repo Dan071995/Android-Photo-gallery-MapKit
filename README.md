@@ -7,7 +7,7 @@ Thus, I display the user's position on the map and the nearest places of interes
 # Technology stack:
 Coroutines / Flows / MVVM / Room / SQLLite / RecyclerView / ResultAPI / Retrofit / Yandex MapKit
 
-# Vidio:
+# Video:
 
 
 https://user-images.githubusercontent.com/104363713/235672053-b3aecb63-64e8-4b1d-9dfc-f33913e33f34.mp4
