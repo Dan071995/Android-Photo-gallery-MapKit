@@ -1,16 +1,18 @@
 package com.example.cameraroomrecyclerview.entity
 
+import com.google.gson.annotations.SerializedName
+
 data class AttractionsInfo(
-    val xid : String, //Уникальный идентификатор объекта
-    val name : String,
-    val kinds : String, //Категория объекта
-    val osm : String, //Уникальный идентификатор объекта в OpenStreetMap
-    val rate : Double, //Рейтинг известности объекта
-    val dist : Double, //Расстояние в метрах от выбранной точки (только для запроса по радиусу)
-    val point : Coordinates //Координаты объекта
+    @SerializedName("xid") val xid : String, //Уникальный идентификатор объекта
+    @SerializedName("name") val name : String,
+    @SerializedName("dist")  val dist : Double, //Расстояние в метрах от выбранной точки (только для запроса по радиусу)
+    @SerializedName("rate") val rate : Double, //Рейтинг известности объекта
+    @SerializedName("osm") val osm : String, //Уникальный идентификатор объекта в OpenStreetMap
+    @SerializedName("kinds") val kinds : String, //Категория объекта
+    @SerializedName("point")  val point : Coordinates //Координаты объекта
 )
 
 data class Coordinates (
-    val lon : Double, //Долгота
-    val lat : Double  //Широта
+    @SerializedName("lon")  val lon : Double, //Долгота
+    @SerializedName("lat")  val lat : Double  //Широта
     )

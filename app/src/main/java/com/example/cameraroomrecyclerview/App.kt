@@ -10,6 +10,7 @@ class App:Application() {
 
     override fun onCreate() {
         super.onCreate()
+
         //Устанавливаем ключ для работы с картой Yandex
         MapKitFactory.setApiKey("8def492c-9ed5-4046-a51a-7cdf58b9b634")
 

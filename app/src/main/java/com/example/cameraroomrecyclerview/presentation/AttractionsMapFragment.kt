@@ -12,11 +12,11 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.example.cameraroomrecyclerview.App
+import androidx.lifecycle.lifecycleScope
 import com.example.cameraroomrecyclerview.R
+import com.example.cameraroomrecyclerview.data.MainRepository
 import com.example.cameraroomrecyclerview.databinding.FragmentAttractionsMapBinding
 import com.example.cameraroomrecyclerview.entity.AttractionsInfo
-import com.example.cameraroomrecyclerview.entity.Coordinates
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.MapKit
 import com.yandex.mapkit.MapKitFactory
@@ -37,8 +37,9 @@ class AttractionsMapFragment : Fragment(){
     private val viewModel: MainViewModel by activityViewModels {
         object : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                val fileInfoDAO = (requireContext().applicationContext as App).dataBase.fileInfoDao()
-                return MainViewModel(fileInfoDAO, requireContext()) as T
+                //val fileInfoDAO = (requireContext().applicationContext as App).dataBase.fileInfoDao()
+                val repository = MainRepository(requireContext())
+                return MainViewModel(repository, requireContext()) as T
             }
         }
     }
@@ -95,27 +96,7 @@ class AttractionsMapFragment : Fragment(){
         }
         //Меняем зум при нажатии на кнопки + возвращаем камеру в начальное положение
         binding.imageButtonZoomUp.setOnClickListener { zoomUp() }
-        binding.imageButtonZoomDown.setOnClickListener {
-            zoomDown()
-            it.postDelayed({attractionsList.add(
-                addMarker(
-                    imageRes = R.drawable.location_pin,
-                    objectInfo =
-                    AttractionsInfo(
-                        xid = "123",
-                        name = "Big Buddha2",
-                        kinds = "....",
-                        osm = "999",
-                        rate = 1.0,
-                        dist = 500.65844,
-                        Coordinates(
-                            lat = 8.0,
-                            lon = 98.0
-                        )
-                    )
-                )
-            )}, 100)
-        }
+        binding.imageButtonZoomDown.setOnClickListener { zoomDown() }
         binding.imageButtonSetCameraDefaultPosition.setOnClickListener { setDefaultCameraPosition() }
 
         //Кнопка перехода на последнюю полученную пользовательскую координату
@@ -125,25 +106,22 @@ class AttractionsMapFragment : Fragment(){
             }
         }
 
-        //Добавим маркер в список с маркерами (пока что вручную) и отрисовываем его на кате
-        attractionsList.add(
-            addMarker(
-                imageRes = R.drawable.location_pin,
-                objectInfo =
-                    AttractionsInfo(
-                        xid = "123",
-                        name = "Big Buddha",
-                        kinds = "....",
-                        osm = "999",
-                        rate = 1.0,
-                        dist = 500.65844,
-                        Coordinates(
-                            lat = 7.834090,
-                            lon = 98.298270
+
+        //Слущаем поток с дестопримечательностями и отображаем их на карте
+        viewLifecycleOwner.lifecycleScope.launchWhenStarted {
+            viewModel.flowWithAttractions.collect{ it ->
+                //Добавляем метки на карту
+                it.forEach { attractionsInfo ->
+                    attractionsList.add(
+                        addMarker(
+                            imageRes = R.drawable.location_pin,
+                            objectInfo = attractionsInfo
                         )
                     )
-            )
-        )
+                }
+            }
+        }
+
     }
 
     //Создаем слушатель нажатий на крту (закрываем окно с дестопримечательностью)
@@ -176,7 +154,7 @@ class AttractionsMapFragment : Fragment(){
         if (currentMarkerData != null) {
             //Задаем параметры для отображения
             binding.attractionsTextViewName.text = currentMarkerData.name
-            binding.textViewDistance.text = "%.${1}f".format(currentMarkerData.dist) + " m"
+            binding.textViewDistance.text = getString(R.string.distance_to_place) + " %.${1}f".format(currentMarkerData.dist) + " m"
 
             //Отображаем окно
             if (!isAttractionShow){
@@ -220,6 +198,11 @@ class AttractionsMapFragment : Fragment(){
         mapKitLocationManager.requestSingleUpdate(object : LocationListener {
             override fun onLocationUpdated(location: Location) { //Когда кординаты будут получены, запустится этот  метод
                 lastLocation = location //Сохраняем последнюю полученную локацию
+
+                //Передаем локацию в viewModel. Данный метод передает координыты пользователя в OpenTripMap API, который вернет список дестопримеячательностей
+                //в радиусе 3000м (задается программно).
+                viewModel.loadInfo(3000,location.position.longitude,location.position.latitude)
+
                 binding.cardViewLocation.visibility = View.VISIBLE //Делаем кнопку возвращения на позици пользователя видимой
                 moveCamera(location) //Наводим камеру на пользователя
             }
@@ -242,7 +225,7 @@ class AttractionsMapFragment : Fragment(){
     //Переместить камеру на указанную позицию
     private fun moveCamera(location: Location){
         binding.mapview.map.move(
-            CameraPosition(location.position, 11.0f, 0.0f, 0.0f),
+            CameraPosition(location.position, 14.0f, 0.0f, 0.0f),
             Animation(
                 Animation.Type.SMOOTH,
                 1.5f

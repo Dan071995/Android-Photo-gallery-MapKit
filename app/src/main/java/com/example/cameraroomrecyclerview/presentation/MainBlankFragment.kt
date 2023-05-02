@@ -1,7 +1,6 @@
 package com.example.cameraroomrecyclerview.presentation
 
 import android.content.Context
-import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.Uri
@@ -21,13 +20,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import com.example.cameraroomrecyclerview.App
 import com.example.cameraroomrecyclerview.R
+import com.example.cameraroomrecyclerview.data.MainRepository
 import com.example.cameraroomrecyclerview.databinding.FragmentMainBlankBinding
 import com.example.cameraroomrecyclerview.entity.FileInfo
-import com.google.android.gms.common.api.ResolvableApiException
-import com.google.android.gms.location.*
-import com.google.android.gms.tasks.Task
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -56,8 +52,9 @@ class MainBlankFragment : Fragment() {
     private val viewModel:MainViewModel by activityViewModels{
         object : ViewModelProvider.Factory{
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                val fileInfoDAO = (requireContext().applicationContext as App).dataBase.fileInfoDao()
-                return MainViewModel(fileInfoDAO,requireContext()) as T
+                //val fileInfoDAO = (requireContext().applicationContext as App).dataBase.fileInfoDao()
+                val repository = MainRepository(requireContext())
+                return MainViewModel(repository,requireContext()) as T
             }
         }
     }
@@ -104,7 +101,6 @@ class MainBlankFragment : Fragment() {
                 myAdapter.setData(it.toMutableList())
             }
         }
-
     }
 
     private fun checkPermissions(): Boolean {
