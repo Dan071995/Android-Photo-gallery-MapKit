@@ -57,6 +57,85 @@ class AttractionsMapFragment : Fragment(){
 
     private var isAttractionShow = false //флаг. Когда карточка с дестопримечательностью видна = true
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // ЛИСЕНЕРЫ (В НИХ ПРОИСХОДИТ ОБРАБОТКА НАЖАТИЙ НА КАРТУ И ЛОГИКА РАБОТЫ ПРИ ТАКИХ НАЖАТИЯХ) //
+
+    //Слушаем ложение камеры. Если пользователь повернул камеру, показываем кнопку с возвращением в исходную позицию
+    //Если камера и так в исходной аозиции, скрывем эту кнопку
+    private val cameraListener = CameraListener { map, cameraPosition, cameraUpdateReason, b ->
+        if (cameraPosition.azimuth != 0.0f || cameraPosition.tilt != 0.0f) binding.cardViewCameraDefaultPosition.visibility = View.VISIBLE
+        else binding.cardViewCameraDefaultPosition.visibility = View.INVISIBLE
+    }
+
+    //Создаем слушатель нажатий на крту (закрываем окно с дестопримечательностью)
+    private val inputListener : InputListener = object : InputListener {
+        //Короткое нажатие на крту
+        override fun onMapTap(p0: Map, p1: Point) {
+            if (isAttractionShow){
+                isAttractionShow = false
+                //анимация (скрываем attractionsCardView за 1 сек)
+                val animHide = ObjectAnimator.ofFloat(binding.attractionsCardView,"alpha",1f,0f).apply {
+                    duration = 500
+                    interpolator = AccelerateDecelerateInterpolator()
+                }
+                AnimatorSet().apply {
+                    play(animHide)
+                    start()
+                }
+
+            }
+        }
+        //Долгое нажатие на карту
+        override fun onMapLongTap(p0: Map, p1: Point) {}
+    }
+
+    //Слущатель нажатия на маркер (к каждому созданному маркеру на карте нужно прикремпить этот слущатель)
+    //Обрабатываем в лямбде код, при нажатии на маркер (открываем окно с дестопримечательностью)
+    private val attractionsInfoMapObjectTapListener = MapObjectTapListener { mapObject, point ->
+        //Пытаемся привести полученнй таб к объекту AttractionsInfo (as? вернет null если такое привдение не возможно)
+        val currentMarkerData = mapObject.userData as? AttractionsInfo
+
+        if (currentMarkerData != null) {
+            //Задаем параметры для отображения
+            binding.attractionsTextViewName.text = currentMarkerData.name
+            binding.textViewDistance.text = getString(R.string.distance_to_place) + " %.${1}f".format(currentMarkerData.dist) + " m"
+
+            //Отображаем окно
+            if (!isAttractionShow){
+                isAttractionShow = true
+                //анимация (проявляем attractionsCardView за 1 сек)
+                val animShow = ObjectAnimator.ofFloat(binding.attractionsCardView,"alpha",0f,1f).apply {
+                    duration = 500
+                    interpolator = AccelerateDecelerateInterpolator()
+                }
+                AnimatorSet().apply {
+                    play(animShow)
+                    start()
+                }
+            }
+        }
+        true
+    }
+
+    // Слушатель текущей локации пользователя
+    // Создаем слушатель локации как отдельную переменную (чтобы ее можно было закрыть при выходе из экрана с картой, чтобы небыло утечек памяти)
+    private val locationListener = object : LocationListener {
+        override fun onLocationUpdated(location: Location) { //Когда кординаты будут получены, запустится этот  метод
+            lastLocation = location //Сохраняем последнюю полученную локацию
+
+            //Передаем локацию в viewModel. Данный метод передает координыты пользователя в OpenTripMap API, который вернет список дестопримеячательностей
+            //в радиусе 3000м (задается программно).
+            viewModel.loadInfo(3000,location.position.longitude,location.position.latitude)
+
+            binding.cardViewLocation.visibility = View.VISIBLE //Делаем кнопку возвращения на позици пользователя видимой
+            moveCamera(location) //Наводим камеру на пользователя
+        }
+        override fun onLocationStatusUpdated(p0: LocationStatus) {}
+    }
+
+    //                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -85,15 +164,10 @@ class AttractionsMapFragment : Fragment(){
         userLocationOnMapKit = mapKit.createUserLocationLayer(binding.mapview.mapWindow)
         userLocationOnMapKit.isVisible = true
 
-        toUserPositionAndLoad()
+        //Переводим камеру на позицию Пользователя 1 раз (при старте приложения)
+        mapKitLocationManager.requestSingleUpdate(locationListener)
         //updateUserPositionPeriodically()
-
-        //Слушаем ложение камеры. Если пользователь повернул камеру, показываем кнопку с возвращением в исходную позицию
-        //Если камера и так в исходной аозиции, скрывем эту кнопку
-        binding.mapview.map.addCameraListener { map, cameraPosition, cameraUpdateReason, b ->
-            if (cameraPosition.azimuth != 0.0f || cameraPosition.tilt != 0.0f) binding.cardViewCameraDefaultPosition.visibility = View.VISIBLE
-            else binding.cardViewCameraDefaultPosition.visibility = View.INVISIBLE
-        }
+        binding.mapview.map.addCameraListener(cameraListener) //Добавляем слущатель нажатий на карту
         //Меняем зум при нажатии на кнопки + возвращаем камеру в начальное положение
         binding.imageButtonZoomUp.setOnClickListener { zoomUp() }
         binding.imageButtonZoomDown.setOnClickListener { zoomDown() }
@@ -124,55 +198,6 @@ class AttractionsMapFragment : Fragment(){
 
     }
 
-    //Создаем слушатель нажатий на крту (закрываем окно с дестопримечательностью)
-    private val inputListener : InputListener = object : InputListener {
-        //Короткое нажатие на крту
-        override fun onMapTap(p0: Map, p1: Point) {
-            if (isAttractionShow){
-            isAttractionShow = false
-                //анимация (скрываем attractionsCardView за 1 сек)
-                val animHide = ObjectAnimator.ofFloat(binding.attractionsCardView,"alpha",1f,0f).apply {
-                    duration = 500
-                    interpolator = AccelerateDecelerateInterpolator()
-                }
-                AnimatorSet().apply {
-                    play(animHide)
-                    start()
-                }
-
-            }
-        }
-        //Долгое нажатие на карту
-        override fun onMapLongTap(p0: Map, p1: Point) {}
-    }
-
-    //Обрабатываем в лямбде код, при нажатии на маркер (открываем окно с дестопримечательностью)
-    private val attractionsInfoMapObjectTapListener = MapObjectTapListener { mapObject, point ->
-        //Пытаемся привести полученнй таб к объекту AttractionsInfo (as? вернет null если такое привдение не возможно)
-        val currentMarkerData = mapObject.userData as? AttractionsInfo
-
-        if (currentMarkerData != null) {
-            //Задаем параметры для отображения
-            binding.attractionsTextViewName.text = currentMarkerData.name
-            binding.textViewDistance.text = getString(R.string.distance_to_place) + " %.${1}f".format(currentMarkerData.dist) + " m"
-
-            //Отображаем окно
-            if (!isAttractionShow){
-            isAttractionShow = true
-            //анимация (проявляем attractionsCardView за 1 сек)
-            val animShow = ObjectAnimator.ofFloat(binding.attractionsCardView,"alpha",0f,1f).apply {
-                duration = 500
-                interpolator = AccelerateDecelerateInterpolator()
-            }
-            AnimatorSet().apply {
-                play(animShow)
-                start()
-            }
-            }
-        }
-            true
-        }
-
     //Метод добавления маркера (Это обёртка над addPlacemark в которой к маркеру цепляется обработчик событий и полезная нагрузка)
     private fun addMarker(
         @DrawableRes imageRes: Int,
@@ -188,26 +213,9 @@ class AttractionsMapFragment : Fragment(){
                         imageRes)
             )
         marker.userData = objectInfo
-        marker.addTapListener(attractionsInfoMapObjectTapListener) //Кладем созданный маркер в слущатель нажатий на маркеры
+        marker.addTapListener(attractionsInfoMapObjectTapListener) //Добавляем к маркеру слущатель нажатия на него
 
         return marker
-    }
-
-    //Переводим камеру на позицию Пользователя 1 раз (при старте приложения)
-    private fun toUserPositionAndLoad() {
-        mapKitLocationManager.requestSingleUpdate(object : LocationListener {
-            override fun onLocationUpdated(location: Location) { //Когда кординаты будут получены, запустится этот  метод
-                lastLocation = location //Сохраняем последнюю полученную локацию
-
-                //Передаем локацию в viewModel. Данный метод передает координыты пользователя в OpenTripMap API, который вернет список дестопримеячательностей
-                //в радиусе 3000м (задается программно).
-                viewModel.loadInfo(3000,location.position.longitude,location.position.latitude)
-
-                binding.cardViewLocation.visibility = View.VISIBLE //Делаем кнопку возвращения на позици пользователя видимой
-                moveCamera(location) //Наводим камеру на пользователя
-            }
-            override fun onLocationStatusUpdated(p0: LocationStatus) {}
-        })
     }
 
     //Подписываемся на изменение положения Пользователя, и переодически обновляем данные: lastLocation
@@ -268,6 +276,11 @@ class AttractionsMapFragment : Fragment(){
 
     override fun onDestroyView() {
         super.onDestroyView()
+        binding.mapview.map.removeCameraListener(cameraListener)
+        binding.mapview.map.removeInputListener(inputListener)
+        binding.mapview.map.mapObjects.removeTapListener(attractionsInfoMapObjectTapListener)
+        mapKitLocationManager.unsubscribe(locationListener)
+        mapKit.onStop()
         _binding = null
     }
 
